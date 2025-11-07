@@ -1,0 +1,21 @@
+{
+	"name": "bb-uv-optimizer",
+	"module": "src/index.ts",
+	"type": "module",
+	"scripts": {
+		"dev": "bun build ./src/index.ts --outfile ./dist/svdex.bb_uv_optimizer.js --watch --minify"
+	},
+	"devDependencies": {
+		"blockbench-types": "^5.0.0",
+		"esbuild": "^0.25.6",
+		"eslint": "^9.37.0",
+		"prettier": "^3.6.2",
+		"prettier-plugin-multiline-arrays": "^4.0.3",
+		"prettier-plugin-organize-imports": "^4.1.0",
+		"typescript-eslint": "^8.36.0",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	}
+}
