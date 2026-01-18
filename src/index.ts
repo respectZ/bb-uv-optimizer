@@ -1,6 +1,6 @@
 /// <reference types="blockbench-types"/>
 
-import { BinPacker, type PackOptions } from "./core/binpacker_v2";
+import { BinPacker, type PackOptions, type PackResult } from "./bin_packer";
 
 // TODO: Texture select
 // TODO: Animated texture
@@ -48,7 +48,7 @@ class BBUVOptimizerPlugin implements PluginOptions {
 				acc["_tex." + texture.uuid] = {
 					type: "checkbox",
 					label: texture.name,
-					value: true,
+					value: !texture.name.includes("_optimized"),
 				};
 				acc["preview." + texture.uuid] = {
 					type: "info",
@@ -63,37 +63,37 @@ class BBUVOptimizerPlugin implements PluginOptions {
 			form: {
 				algorithm: {
 					type: "select",
-					default: "shelf",
+					default: "skyline",
 					label: "Packing Algorithm",
 					options: {
-						shelf: "Shelf",
-						maxrects: "MaxRects",
+						skyline: "Skyline",
 					},
 				},
 				maxSize: {
 					type: "number",
-					value: 1024,
+					value: Project ? Math.max(Project.texture_width, Project.texture_height) : 1024,
 					label: "Maximum Texture Size",
+					min: 1,
+					max: 16384,
 				},
 				padding: {
 					type: "number",
 					value: 0,
 					label: "Padding Between UV",
+					min: 0,
+					max: 16,
 				},
-				// removeDuplicateUV: {
-				// 	type: "checkbox",
-				// 	value: true,
-				// 	label: "Remove Duplicate UV",
-				// },
-				sort: {
+				similarCheck: {
 					type: "checkbox",
 					value: true,
-					label: "Sort UV by Size",
+					label: "Remove Duplicate UV",
 				},
-				rotate: {
-					type: "checkbox",
-					value: true,
-					label: "Allow Rotation",
+				similarityThreshold: {
+					type: "number",
+					value: 90,
+					label: "Similarity Threshold (%)",
+					min: 0,
+					max: 100,
 				},
 				...textures,
 				buttonBar: {
@@ -148,11 +148,35 @@ class BBUVOptimizerPlugin implements PluginOptions {
 		}
 		const firstTexture = filteredTextures[0];
 		const packer = new BinPacker(Cube.all, firstTexture);
-		const result = packer.pack(formResult);
+		let result: PackResult;
+		try {
+			result = packer.pack(formResult);
+		} catch (error) {
+			Blockbench.showQuickMessage(`Packing failed: ${(error as Error).message}`, 4000);
+			return;
+		}
+		// Update UVs
+		Undo.initEdit({ elements: Cube.all, uv_mode: true });
+		let maxWidth = 0;
+		let maxHeight = 0;
+		for (const cube of Cube.all) {
+			for (const rect of result.rects) {
+				if (cube.uuid !== rect.uuid) {
+					continue;
+				}
+				const face = cube.faces[rect.face];
+				face.uv = rect.placed.toUV();
+				maxWidth = Math.max(maxWidth, face.uv[0], face.uv[2]);
+				maxHeight = Math.max(maxHeight, face.uv[1], face.uv[3]);
+			}
+			cube.preview_controller.updateUV(cube);
+		}
+		Undo.finishEdit("Update UVs");
 		// Update textures
 		const newTextures: Texture[] = [];
 		Undo.initEdit({ textures: newTextures });
 		for (const texture of filteredTextures) {
+			// const newTexture = packer.exportTexture(result, texture, { maxHeight, maxWidth });
 			const newTexture = packer.exportTexture(result, texture);
 			newTextures.push(newTexture);
 			newTexture.add(true);
@@ -160,35 +184,13 @@ class BBUVOptimizerPlugin implements PluginOptions {
 		Undo.finishEdit("add_texture");
 		// Update project texture size
 		Undo.initEdit({ uv_mode: true });
-		const firstNewTexture = newTextures[0];
-		Project.texture_width = firstNewTexture.width;
-		Project.texture_height = firstNewTexture.height;
-		firstNewTexture.select();
+		const texture = newTextures[0];
+		const wFrames = Math.ceil(texture.width / (Project.texture_width ?? 1));
+		const hFrames = Math.ceil(texture.height / (Project.texture_height ?? 1));
+		Project.texture_width = Math.ceil(texture.width / wFrames);
+		Project.texture_height = Math.ceil(texture.height / hFrames);
+		texture.select();
 		Undo.finishEdit("Change Texture Size");
-		// Update uvs
-		Undo.initEdit({ elements: Cube.all, uv_mode: true });
-		const emptyUV = [
-			firstNewTexture.width - 1,
-			firstNewTexture.height - 1,
-			firstNewTexture.width,
-			firstNewTexture.height,
-		] as [number, number, number, number];
-		console.log("emptyUV", emptyUV);
-		for (const cube of Cube.all) {
-			for (const rect of result.rects) {
-				if (cube.uuid !== rect.uuid) {
-					continue;
-				}
-				const face = cube.faces[rect.face];
-				if (rect.imageData) {
-					face.uv = rect.placed.toUV();
-				} else {
-					face.uv = emptyUV;
-				}
-			}
-			cube.preview_controller.updateUV(cube);
-		}
-		Undo.finishEdit("Update UVs");
 		// Apply changes
 		Canvas.updateAll();
 		Project.saved = false;
