@@ -125,14 +125,10 @@ export class CubeData {
 			return;
 		}
 		const img = texture.img;
-		// const scaleW = Project ? texture.width / Project.texture_width : 1;
-		// const scaleH = Project ? texture.height / Project.texture_height : 1;
-		const scaleW = 1;
-		const scaleH = 1;
-		const sx = this.location.x * scaleW;
-		const sy = this.location.y * scaleH;
-		const sw = w * scaleW;
-		const sh = h * scaleH;
+		const sx = this.location.x;
+		const sy = this.location.y;
+		const sw = w;
+		const sh = h;
 		const canvas = document.createElement("canvas");
 		canvas.width = sw;
 		canvas.height = sh;
@@ -142,6 +138,13 @@ export class CubeData {
 		}
 		context.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
 		return context.getImageData(0, 0, sw, sh);
+	}
+	clone(): CubeData {
+		return new CubeData(
+			{ x: this.location.x, y: this.location.y },
+			{ x: this.size.x, y: this.size.y },
+			this.mirror,
+		);
 	}
 }
 

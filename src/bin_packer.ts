@@ -16,7 +16,6 @@ export class BinPacker {
 		}
 	}
 	exportTexture(result: PackResult, texture: Texture, options: ExportTextureOptions = {}): Texture {
-		// TODO: Animated textures
 		const { rects } = result;
 		let w = result.w;
 		let h = result.h;
@@ -39,16 +38,30 @@ export class BinPacker {
 			throw new Error("Failed to get canvas context");
 		}
 		for (const r of rects) {
-			if (!r.imageData) {
-				continue;
+			const cloneData = r.cubeData.clone();
+			const x = cloneData.location.x;
+			const y = cloneData.location.y;
+			for (let i = 0; i < wFrames; i++) {
+				for (let j = 0; j < hFrames; j++) {
+					if (!r.imageData) {
+						continue;
+					}
+					const yOffset = j * (h / hFrames);
+					const xOffset = i * (w / wFrames);
+					// cloneData.location.x = x + xOffset;
+					// cloneData.location.y = y + yOffset;
+					console.log(j * (texture.height / hFrames));
+					cloneData.location.x = x + i * (texture.width / wFrames);
+					cloneData.location.y = y + j * (texture.height / hFrames);
+					const imageData = cloneData.getImageData(texture);
+					if (!imageData) {
+						continue;
+					}
+					const rx = r.placed.location.x + xOffset;
+					const ry = r.placed.location.y + yOffset;
+					context.putImageData(imageData, rx, ry);
+				}
 			}
-			const imageData = r.cubeData.getImageData(texture);
-			if (!imageData) {
-				continue;
-			}
-			const rx = r.placed.location.x;
-			const ry = r.placed.location.y;
-			context.putImageData(imageData, rx, ry);
 		}
 		let name = texture.name.split(".").slice(0, -1).join(".");
 		const extension = texture.name.split(".").pop() ?? "png";
@@ -68,12 +81,10 @@ export class BinPacker {
 
 export type PackOptions = {
 	algorithm: "skyline";
-	// sortHeuristic: SortHeuristic;
 	maxSize: number;
 	padding: number;
 	similarCheck: boolean;
 	similarityThreshold: number;
-	// rotate: boolean;
 };
 
 export type PackResult = {

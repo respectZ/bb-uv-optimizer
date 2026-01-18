@@ -176,8 +176,7 @@ class BBUVOptimizerPlugin implements PluginOptions {
 		const newTextures: Texture[] = [];
 		Undo.initEdit({ textures: newTextures });
 		for (const texture of filteredTextures) {
-			// const newTexture = packer.exportTexture(result, texture, { maxHeight, maxWidth });
-			const newTexture = packer.exportTexture(result, texture);
+			const newTexture = packer.exportTexture(result, texture, { maxHeight, maxWidth });
 			newTextures.push(newTexture);
 			newTexture.add(true);
 		}
