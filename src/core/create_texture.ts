@@ -28,6 +28,9 @@ function createTexture(arg: CreateTextureArg) {
 		if (r.width === 0 || r.height === 0) {
 			continue;
 		}
+		if (r.ref) {
+			continue;
+		}
 		// Transparent from packer.
 		if (r.width === -1 && r.height === -1) {
 			continue;

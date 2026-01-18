@@ -3,7 +3,7 @@ import { Pow2Utils } from "./utils";
 export class BinPacker {
 	constructor(private cubes: Cube[]) {}
 	pack(options: PackOptions, textures: Texture[] = []) {
-		const { sort = true } = options;
+		const { sort = true, removeDuplicateUV = true } = options;
 		const rectangles: BinRect[] = this.cubes.reduce((acc, cube) => {
 			for (const [face, cubeFace] of Object.entries(cube.faces)) {
 				if (this.isEmptyCubeFace(cubeFace, textures)) {
@@ -18,7 +18,96 @@ export class BinPacker {
 					});
 					continue;
 				}
+				// Remove duplicate UVs
 				const uv = cubeFace.uv;
+				let duplicate = false;
+				if (acc.length > 0 && removeDuplicateUV) {
+					outer: for (const existing of acc) {
+						if (existing.ref) {
+							// Skip already referenced rectangles.
+							continue;
+						}
+						const a = this.getCubeFaceImageData(cubeFace, textures);
+						const b = this.getCubeFaceImageData(
+							{
+								uv: [
+									existing.location.x,
+									existing.location.y,
+									existing.location.x + (existing.invertWidth ? -existing.width : existing.width),
+									existing.location.y +
+										(existing.invertHeight ? -existing.height : existing.height),
+								],
+							},
+							textures,
+						);
+						for (let i = 0; i < a.length; i++) {
+							const result = this.isSamePixels(a[i], b[i]);
+							const ref = {
+								cube,
+								face: existing.face,
+							};
+							if (result !== false) {
+								console.warn(
+									"Duplicate UV detected",
+									cube.uuid,
+									face,
+									existing.uuid,
+									existing.face,
+									result,
+								);
+							}
+							if (result === true) {
+								acc.push({
+									...existing,
+									uuid: cube.uuid,
+									face,
+									ref,
+								});
+								duplicate = true;
+								break outer;
+							} else if (result === "flip_w") {
+								acc.push({
+									...existing,
+									uuid: cube.uuid,
+									face,
+									invertWidth:
+										existing.invertWidth && uv[2] < uv[0] ? false : !existing.invertWidth,
+									ref,
+								});
+								duplicate = true;
+								break outer;
+							} else if (result === "flip_h") {
+								acc.push({
+									...existing,
+									uuid: cube.uuid,
+									face,
+									invertHeight:
+										existing.invertHeight && uv[3] < uv[1] ? false : !existing.invertHeight,
+									ref,
+								});
+								duplicate = true;
+								break outer;
+							} else if (result === "flip_wh") {
+								acc.push({
+									...existing,
+									uuid: cube.uuid,
+									face,
+									invertWidth:
+										existing.invertWidth && uv[2] < uv[0] ? false : !existing.invertWidth,
+									invertHeight:
+										existing.invertHeight && uv[3] < uv[1] ? false : !existing.invertHeight,
+									ref,
+								});
+								duplicate = true;
+								break outer;
+							}
+						}
+					}
+				}
+				if (duplicate) {
+					continue;
+				}
+
 				const width = Math.ceil(Math.abs(uv[2] - uv[0]));
 				const height = Math.ceil(Math.abs(uv[3] - uv[1]));
 				acc.push({
@@ -48,6 +137,30 @@ export class BinPacker {
 				throw new Error(`Unknown packing algorithm: ${options.algorithm}`);
 		}
 	}
+	private getCubeFaceImageData(cubeFace: Pick<CubeFace, "uv">, textures: Texture[]): ImageData[] {
+		const uv = cubeFace.uv;
+		const width = Math.ceil(Math.abs(uv[2] - uv[0]));
+		const height = Math.ceil(Math.abs(uv[3] - uv[1]));
+		const imageDatas: ImageData[] = [];
+		for (const texture of textures) {
+			const img = texture.img;
+			const scaleW = Project ? texture.width / Project.texture_width : 1;
+			const scaleH = Project ? texture.height / Project.texture_height : 1;
+			const tCanvas = document.createElement("canvas");
+			const tContext = tCanvas.getContext("2d");
+			if (!tContext) {
+				continue;
+			}
+			tCanvas.width = width;
+			tCanvas.height = height;
+			const sx = (uv[0] - (uv[2] < uv[0] ? width : 0)) * scaleW;
+			const sy = (uv[1] - (uv[3] < uv[1] ? height : 0)) * scaleH;
+			tContext.drawImage(img, sx, sy, width * scaleW, height * scaleH, 0, 0, width, height);
+			const imageData = tContext.getImageData(0, 0, tCanvas.width, tCanvas.height);
+			imageDatas.push(imageData);
+		}
+		return imageDatas;
+	}
 	private isEmptyCubeFace(cubeFace: CubeFace, textures: Texture[]): boolean {
 		const uv = cubeFace.uv;
 		const width = Math.ceil(Math.abs(uv[2] - uv[0]));
@@ -66,17 +179,9 @@ export class BinPacker {
 			}
 			tCanvas.width = width;
 			tCanvas.height = height;
-			tContext.drawImage(
-				img,
-				uv[0] * scaleW,
-				uv[1] * scaleH,
-				width * scaleW,
-				height * scaleH,
-				0,
-				0,
-				width,
-				height,
-			);
+			const sx = (uv[0] - (uv[2] < uv[0] ? width : 0)) * scaleW;
+			const sy = (uv[1] - (uv[3] < uv[1] ? height : 0)) * scaleH;
+			tContext.drawImage(img, sx, sy, width * scaleW, height * scaleH, 0, 0, width, height);
 			const imageData = tContext.getImageData(0, 0, tCanvas.width, tCanvas.height);
 			if (this.isTransparentImage(imageData)) {
 				return true;
@@ -88,6 +193,90 @@ export class BinPacker {
 		const data = imageData.data;
 		for (let i = 3; i < data.length; i += 4) {
 			if (data[i] !== 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+	private isSamePixels(
+		imageDataA: ImageData,
+		imageDataB: ImageData,
+	): boolean | "flip_w" | "flip_h" | "flip_wh" {
+		const dataA = imageDataA.data;
+		const dataB = imageDataB.data;
+		const width = imageDataA.width;
+		const height = imageDataA.height;
+		if (dataA.length !== dataB.length) {
+			return false;
+		}
+		if (this.areDataIdentical(dataA, dataB)) {
+			return true;
+		}
+
+		let same = true;
+		let flipw = true;
+		let fliph = true;
+		let flipwh = true;
+		for (let i = 0; i < width * height; i++) {
+			const y = Math.floor(i / width);
+			const x = i % width;
+			const originalIndex = i * 4;
+			const flippedWIndex = (y * width + (width - 1 - x)) * 4;
+			const flippedHIndex = ((height - 1 - y) * width + x) * 4;
+			const flippedWHIndex = ((height - 1 - y) * width + (width - 1 - x)) * 4;
+			if (same && !this.comparePixels(dataA, originalIndex, dataB, originalIndex)) {
+				same = false;
+			}
+			if (flipw && !this.comparePixels(dataA, originalIndex, dataB, flippedWIndex)) {
+				flipw = false;
+			}
+			if (fliph && !this.comparePixels(dataA, originalIndex, dataB, flippedHIndex)) {
+				fliph = false;
+			}
+			if (flipwh && !this.comparePixels(dataA, originalIndex, dataB, flippedWHIndex)) {
+				flipwh = false;
+			}
+			if (!same && !flipw && !fliph && !flipwh) {
+				return false;
+			}
+		}
+		if (same) {
+			return true;
+		}
+		if (flipw) {
+			return "flip_w";
+		}
+		if (fliph) {
+			return "flip_h";
+		}
+		if (flipwh) {
+			return "flip_wh";
+		}
+		return false;
+	}
+	private areDataIdentical(data1: Uint8ClampedArray, data2: Uint8ClampedArray): boolean {
+		if (data1.length !== data2.length) {
+			return false;
+		}
+		const chunkSize = 1024;
+		for (let i = 0; i < data1.length; i += chunkSize) {
+			const end = Math.min(i + chunkSize, data1.length);
+			for (let j = i; j < end; j++) {
+				if (data1[j] !== data2[j]) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+	private comparePixels(
+		data1: Uint8ClampedArray,
+		index1: number,
+		data2: Uint8ClampedArray,
+		index2: number,
+	): boolean {
+		for (let i = 0; i < 4; i++) {
+			if (data1[index1 + i] !== data2[index2 + i]) {
 				return false;
 			}
 		}
@@ -171,12 +360,23 @@ export class BinPacker {
 		let curY = 0;
 		let shelfHeight = 0;
 		for (const r of rectangles) {
+			if (r.ref) {
+				const p = placed.find((pl) => pl.uuid === r.ref?.cube.uuid && pl.face === r.ref?.face);
+				if (p) {
+					placed.push({
+						...r,
+						newLocation: p.newLocation,
+					});
+				}
+				continue;
+			}
 			// TODO: Fix empty rectangles being placed incorrectly
 			if (r.width === -1 && r.height === -1) {
 				placed.push({
 					...r,
 					newLocation: { x: 0, y: 0 },
 				});
+				continue;
 			}
 			const wWithPad = r.width + padding;
 			const hWithPad = r.height + padding;
@@ -326,6 +526,10 @@ export type BinRect = {
 	location: THREE.Vec2;
 	invertWidth: boolean;
 	invertHeight: boolean;
+	ref?: {
+		cube: Cube;
+		face: string;
+	};
 };
 
 export type PlacedRect = BinRect & {
@@ -336,6 +540,7 @@ export type PackOptions = {
 	algorithm: "shelf" | "maxrects";
 	maxSize?: number;
 	padding?: number;
+	removeDuplicateUV?: boolean;
 	sort?: boolean;
 };
 
