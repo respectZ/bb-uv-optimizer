@@ -48,9 +48,6 @@ export class BinPacker {
 					}
 					const yOffset = j * (h / hFrames);
 					const xOffset = i * (w / wFrames);
-					// cloneData.location.x = x + xOffset;
-					// cloneData.location.y = y + yOffset;
-					console.log(j * (texture.height / hFrames));
 					cloneData.location.x = x + i * (texture.width / wFrames);
 					cloneData.location.y = y + j * (texture.height / hFrames);
 					const imageData = cloneData.getImageData(texture);
@@ -85,6 +82,7 @@ export type PackOptions = {
 	padding: number;
 	similarCheck: boolean;
 	similarityThreshold: number;
+	textureMode: "merge" | "variant";
 };
 
 export type PackResult = {

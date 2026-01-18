@@ -26,7 +26,7 @@ class BBUVOptimizerPlugin implements PluginOptions {
 		this.action = new Action(this.id + ".action", {
 			icon: "bar_chart",
 			name: "Optimize UV Layout",
-			condition: () => Format,
+			condition: () => Format.id === "bedrock",
 			click: () => this.showDialog(),
 		});
 	}
@@ -75,6 +75,19 @@ class BBUVOptimizerPlugin implements PluginOptions {
 					label: "Maximum Texture Size",
 					min: 1,
 					max: 16384,
+				},
+				textureMode: {
+					type: "select",
+					default: "variant",
+					label: "Texture Mode",
+					options: {
+						variant: "Variants",
+						merge: "Merge Textures",
+					},
+				},
+				info: {
+					type: "info",
+					text: "Merging textures combines all selected textures into one temporary texture. This prevents empty UV on different texture being optimized.<br>If 'Variant' is selected, each texture will have same UV layout.</b>",
 				},
 				padding: {
 					type: "number",
@@ -146,7 +159,10 @@ class BBUVOptimizerPlugin implements PluginOptions {
 			Cube.all.forEach((cube) => cube.setUVMode(false));
 			Undo.finishEdit("Change UV Mode");
 		}
-		const firstTexture = filteredTextures[0];
+		const firstTexture =
+			formResult.textureMode === "merge"
+				? this.mergeTextures(filteredTextures)
+				: filteredTextures[0];
 		const packer = new BinPacker(Cube.all, firstTexture);
 		let result: PackResult;
 		try {
@@ -194,6 +210,27 @@ class BBUVOptimizerPlugin implements PluginOptions {
 		Canvas.updateAll();
 		Project.saved = false;
 		Blockbench.showQuickMessage("UV Optimization Complete!", 2000);
+	}
+	private mergeTextures(textures: Texture[]): Texture {
+		const canvas = document.createElement("canvas");
+		canvas.width = textures[0].width;
+		canvas.height = textures[0].height;
+		const ctx = canvas.getContext("2d");
+		if (!ctx) {
+			throw new Error("Failed to get canvas context.");
+		}
+		for (const texture of textures) {
+			ctx.drawImage(texture.canvas, 0, 0);
+		}
+		const texture = new Texture({
+			name: "merged_texture_temp",
+			width: canvas.width,
+			height: canvas.height,
+		});
+		texture.fromDataURL(canvas.toDataURL());
+		texture.canvas = canvas;
+		texture.ctx = ctx;
+		return texture;
 	}
 }
 

@@ -124,7 +124,6 @@ export class CubeData {
 		if (w === 0 || h === 0) {
 			return;
 		}
-		const img = texture.img;
 		const sx = this.location.x;
 		const sy = this.location.y;
 		const sw = w;
@@ -136,7 +135,7 @@ export class CubeData {
 		if (!context) {
 			throw new Error("Failed to get canvas context");
 		}
-		context.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+		context.drawImage(texture.canvas, sx, sy, sw, sh, 0, 0, sw, sh);
 		return context.getImageData(0, 0, sw, sh);
 	}
 	clone(): CubeData {
