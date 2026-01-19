@@ -1,20 +1,12 @@
 /// <reference types="blockbench-types"/>
-
 import { BinPacker, type PackOptions, type PackResult } from "./bin_packer";
 
-// TODO: Texture select
-// TODO: Animated texture
-// TODO: Check mirrored UV
-// TODO: Mers
-// TODO: Better packing algorithms
-// TODO: Texture settings (merge, variant)
-
 class BBUVOptimizerPlugin implements PluginOptions {
-	readonly id = "svdex.bb_uv_optimizer";
+	readonly id = "moe.svdex.bb_uv_optimizer";
 	readonly title = "UV Optimizer";
 	author = "Svdex";
-	description = "Optimize UV layouts for better texture space usage.";
-	icon = "bar_chart";
+	description = "Automatically optimize UV layouts to reduce texture space usage.";
+	icon = "resize";
 	variant: "both" | "desktop" | "web" = "both";
 	version = "0.1.0";
 	action?: Action;
@@ -24,8 +16,8 @@ class BBUVOptimizerPlugin implements PluginOptions {
 	}
 	onload(): void {
 		this.action = new Action(this.id + ".action", {
-			icon: "bar_chart",
-			name: "Optimize UV Layout",
+			icon: "resize",
+			name: "Optimize UV and Textures",
 			condition: () => Format.id === "bedrock",
 			click: () => this.showDialog(),
 		});
@@ -85,7 +77,7 @@ class BBUVOptimizerPlugin implements PluginOptions {
 						merge: "Merge Textures",
 					},
 				},
-				info: {
+				textureModeInfo: {
 					type: "info",
 					text: "Merging textures combines all selected textures into one temporary texture. This prevents empty UV on different texture being optimized.<br>If 'Variant' is selected, each texture will have same UV layout.</b>",
 				},
@@ -107,6 +99,8 @@ class BBUVOptimizerPlugin implements PluginOptions {
 					label: "Similarity Threshold (%)",
 					min: 0,
 					max: 100,
+					description:
+						"When 'Remove Duplicate UV' is enabled, UV faces with similar textures will share the same UV space to save texture area.\nThe similarity threshold defines how similar two textures must be (0% = completely different, 100% = identical).",
 				},
 				...textures,
 				buttonBar: {
@@ -163,6 +157,9 @@ class BBUVOptimizerPlugin implements PluginOptions {
 			formResult.textureMode === "merge"
 				? this.mergeTextures(filteredTextures)
 				: filteredTextures[0];
+		const wFrames = Math.ceil(firstTexture.width / Project.texture_width);
+		const hFrames = Math.ceil(firstTexture.height / Project.texture_height);
+		console.log("f", wFrames, hFrames);
 		const packer = new BinPacker(Cube.all, firstTexture);
 		let result: PackResult;
 		try {
@@ -200,8 +197,6 @@ class BBUVOptimizerPlugin implements PluginOptions {
 		// Update project texture size
 		Undo.initEdit({ uv_mode: true });
 		const texture = newTextures[0];
-		const wFrames = Math.ceil(texture.width / (Project.texture_width ?? 1));
-		const hFrames = Math.ceil(texture.height / (Project.texture_height ?? 1));
 		Project.texture_width = Math.ceil(texture.width / wFrames);
 		Project.texture_height = Math.ceil(texture.height / hFrames);
 		texture.select();
@@ -212,6 +207,9 @@ class BBUVOptimizerPlugin implements PluginOptions {
 		Blockbench.showQuickMessage("UV Optimization Complete!", 2000);
 	}
 	private mergeTextures(textures: Texture[]): Texture {
+		if (!Project) {
+			throw new Error("No active project found.");
+		}
 		const canvas = document.createElement("canvas");
 		canvas.width = textures[0].width;
 		canvas.height = textures[0].height;
@@ -219,8 +217,30 @@ class BBUVOptimizerPlugin implements PluginOptions {
 		if (!ctx) {
 			throw new Error("Failed to get canvas context.");
 		}
+		const projectW = Project.texture_width;
+		const projectH = Project.texture_height;
 		for (const texture of textures) {
-			ctx.drawImage(texture.canvas, 0, 0);
+			const wFrames = Math.ceil(texture.width / projectW);
+			const hFrames = Math.ceil(texture.height / projectH);
+			if (wFrames > 1 || hFrames > 1) {
+				for (let i = 0; i < wFrames; i++) {
+					for (let j = 0; j < hFrames; j++) {
+						ctx.drawImage(
+							texture.canvas,
+							i * projectW,
+							j * projectH,
+							projectW,
+							projectH,
+							0,
+							0,
+							projectW,
+							projectH,
+						);
+					}
+				}
+			} else {
+				ctx.drawImage(texture.canvas, 0, 0);
+			}
 		}
 		const texture = new Texture({
 			name: "merged_texture_temp",

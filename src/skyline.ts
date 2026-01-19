@@ -97,7 +97,7 @@ export class SkylineBinPacker {
 				}
 			}
 			if (!pos) {
-				throw new Error("Failed to pack rectangle even after growing the bin");
+				throw new Error("Insufficient space to pack all rectangles.");
 			}
 			this.addSkyline(pos.index, pos.x, pos.y, w, h);
 			packedRects.push({

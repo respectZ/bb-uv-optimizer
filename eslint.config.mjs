@@ -1,6 +1,8 @@
 import tseslint from "typescript-eslint";
+import { defineConfig } from "eslint/config";
 
-export default tseslint.config(tseslint.configs.strict, [
+export default defineConfig([
+	...tseslint.configs.strict,
 	{
 		rules: {
 			curly: "warn",

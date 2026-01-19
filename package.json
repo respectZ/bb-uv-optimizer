@@ -3,7 +3,7 @@
 	"module": "src/index.ts",
 	"type": "module",
 	"scripts": {
-		"dev": "bun build ./src/index.ts --outfile ./dist/svdex.bb_uv_optimizer.js --watch --minify"
+		"watch": "bun build ./src/index.ts --outfile ./dist/moe.svdex.bb_uv_optimizer.js --watch --minify --format=iife"
 	},
 	"devDependencies": {
 		"blockbench-types": "^5.0.0",
