@@ -1,6 +1,6 @@
 # bb-uv-optimizer
 
-Blockbench plugin for optimizing uv textures.
+Blockbench plugin for optimizing UV textures.
 
 - [Rectangle Packing](https://en.wikipedia.org/wiki/Rectangle_packing)
 
@@ -8,10 +8,10 @@ Blockbench plugin for optimizing uv textures.
 
 ## Features
 
-- Optimize UV Texture
-- Can be undo-ed (requires several times since it's a complex steps)
-- Automatically converts from Box UV into Per-face UV
-- Remove similar Texture UV within threshold
-- Support multiple texture variants
-- Support animated textures
+- Optimize UV textures
+- Can be undone (requires performing undo around 3 times since it's a complex process)
+- Automatically converts from Box UV to Per-face UV
+- Removes similar texture UVs within the threshold
+- Support for multiple texture variants
+- Support for animated textures
 - Adjustable padding to prevent bleeding
