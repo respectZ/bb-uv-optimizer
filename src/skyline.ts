@@ -100,14 +100,18 @@ export class SkylineBinPacker {
 				throw new Error("Insufficient space to pack all rectangles.");
 			}
 			this.addSkyline(pos.index, pos.x, pos.y, w, h);
+			let placed = CubeData.fromUV([
+				pos.x + this.padding,
+				pos.y + this.padding,
+				pos.x + this.padding + rect.cubeData.size.x,
+				pos.y + this.padding + rect.cubeData.size.y,
+			]);
+			if (rect.cubeData.mirror) {
+				placed = placed.flip(rect.cubeData.mirror);
+			}
 			packedRects.push({
 				...rect,
-				placed: CubeData.fromUV([
-					pos.x + this.padding,
-					pos.y + this.padding,
-					pos.x + this.padding + rect.cubeData.size.x,
-					pos.y + this.padding + rect.cubeData.size.y,
-				]),
+				placed,
 			});
 		}
 		let emptyPixel = this.getFirstEmptyPixel();
