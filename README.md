@@ -1,15 +1,17 @@
 # bb-uv-optimizer
 
-To install dependencies:
+Blockbench plugin for optimizing uv textures.
 
-```bash
-bun install
-```
+- [Rectangle Packing](https://en.wikipedia.org/wiki/Rectangle_packing)
 
-To run:
+![preview](preview.gif)
 
-```bash
-bun run index.ts
-```
+## Features
 
-This project was created using `bun init` in bun v1.2.2. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+- Optimize UV Texture
+- Can be undo-ed (requires several times since it's a complex steps)
+- Automatically converts from Box UV into Per-face UV
+- Remove similar Texture UV within threshold
+- Support multiple texture variants
+- Support animated textures
+- Adjustable padding to prevent bleeding
