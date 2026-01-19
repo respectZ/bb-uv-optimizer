@@ -52,10 +52,7 @@ export class SkylineBinPacker {
 						continue;
 					}
 					if (ImageUtil.isSameImageData(current, r.imageData, this.similarityThreshold)) {
-						let placed = r.placed;
-						if (rect.cubeData.mirror) {
-							placed = placed.flip(rect.cubeData.mirror);
-						}
+						const placed = new CubeData(r.placed.location, r.placed.size, rect.cubeData.mirror);
 						packedRects.push({
 							...rect,
 							placed,
