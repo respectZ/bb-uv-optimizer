@@ -61,11 +61,16 @@ export class BinPacker {
 			}
 		}
 		let name = texture.name.split(".").slice(0, -1).join(".");
-		const extension = texture.name.split(".").pop() ?? "png";
+		let extension = texture.name.split(".").pop();
 		if (name === "") {
 			name = "texture";
 		}
-		name += `_optimized.${extension}`;
+		if (!extension || extension === texture.name) {
+			extension = "";
+		} else {
+			extension = "." + extension;
+		}
+		name += `_optimized${extension}`;
 		const retval = new Texture({
 			name,
 			width: w,
