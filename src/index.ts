@@ -8,6 +8,9 @@ class BBUVOptimizerPlugin implements PluginOptions {
 	description = "Automatically optimize UV layouts.";
 	icon = "resize";
 	variant: "both" | "desktop" | "web" = "both";
+	about =
+		"- Optimize UV textures\n- Can be undone (requires performing undo around 3 times since it's a complex process)\n- Automatically converts from Box UV to Per-face UV\n- Removes similar texture UVs within the threshold\n- Support for multiple texture variants\n- Support for animated textures\n- Adjustable padding to prevent bleeding";
+	tags: [string] = ["Minecraft: Bedrock Edition"];
 	version = "[[VERSION]]";
 	action?: Action;
 	constructor() {
