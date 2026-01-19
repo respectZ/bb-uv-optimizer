@@ -8,7 +8,7 @@ class BBUVOptimizerPlugin implements PluginOptions {
 	description = "Automatically optimize UV layouts to reduce texture space usage.";
 	icon = "resize";
 	variant: "both" | "desktop" | "web" = "both";
-	version = "0.1.0";
+	version = "[[VERSION]]";
 	action?: Action;
 	constructor() {
 		this.onload = this.onload.bind(this);
