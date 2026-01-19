@@ -5,7 +5,7 @@ class BBUVOptimizerPlugin implements PluginOptions {
 	readonly id = "moe.svdex.bb_uv_optimizer";
 	readonly title = "UV Optimizer";
 	author = "Svdex";
-	description = "Automatically optimize UV layouts to reduce texture space usage.";
+	description = "Automatically optimize UV layouts.";
 	icon = "resize";
 	variant: "both" | "desktop" | "web" = "both";
 	version = "[[VERSION]]";
@@ -159,7 +159,6 @@ class BBUVOptimizerPlugin implements PluginOptions {
 				: filteredTextures[0];
 		const wFrames = Math.ceil(firstTexture.width / Project.texture_width);
 		const hFrames = Math.ceil(firstTexture.height / Project.texture_height);
-		console.log("f", wFrames, hFrames);
 		const packer = new BinPacker(Cube.all, firstTexture);
 		let result: PackResult;
 		try {
