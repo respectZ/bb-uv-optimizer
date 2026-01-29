@@ -67,9 +67,14 @@ export class SkylineBinPacker {
 						this.similarityThreshold,
 					);
 					if (mirroredAxis) {
+						// we need to flip the placed uv with mirrored axis + original mirror
+						let placed = r.placed.flip(mirroredAxis);
+						if (rect.cubeData.mirror) {
+							placed = placed.flip(rect.cubeData.mirror);
+						}
 						packedRects.push({
 							...rect,
-							placed: r.placed.flip(mirroredAxis),
+							placed,
 							imageData: undefined,
 						});
 						found = true;
