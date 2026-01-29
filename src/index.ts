@@ -179,6 +179,7 @@ class BBUVOptimizerPlugin implements PluginOptions {
 				if (cube.uuid !== rect.uuid) {
 					continue;
 				}
+				cube.setUVMode(false);
 				const face = cube.faces[rect.face];
 				face.uv = rect.placed.toUV();
 				maxWidth = Math.max(maxWidth, face.uv[0], face.uv[2]);
